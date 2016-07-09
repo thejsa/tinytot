@@ -1,6 +1,8 @@
 # tinytot
 Homebrew 2FA OTP generator for the Nintendo 3DS.
 
+Currently only supports TOTP, with the secret being set in the code. (base32-encoded)
+
 Uses liboath from [oath-toolkit](http://www.nongnu.org/oath-toolkit/) by Simon Joseffson, et al., licensed under the LGPL.
 
 Instructions for building liboath: (in the oath-toolkit/liboath directory):
