@@ -90,6 +90,33 @@ int main() {
 	
 	char *secret;
 	
+	FILE *secretFile;
+	if((secretFile = fopen("secret.txt", "r")) == NULL) {
+		printf("Secret.txt not found in application directory - this file is required to generate an OTP. Press A to exit.");
+		while(aptMainLoop()) {
+			gspWaitForVBlank();
+			hidScanInput();
+			
+			u32 kDown = hidKeysDown();
+			if(kDown & KEY_A) break;
+			gfxFlushBuffers();
+			gfxSwapBuffers();
+		}
+		exit(1);
+	}
+	
+	printf("Opened secret.txt\n");
+	
+	//free(enc_secret);
+	
+	char encoded_secret[1024];
+	fscanf(secretFile, "%[^\n]", encoded_secret);
+	printf("Secret read from secret.txt: %s\n", encoded_secret);
+	fclose(secretFile);
+	if(strlen(enc_secret) < 1){
+		printf("Zero length!\n");
+	}
+	
 	ret = oath_base32_decode(enc_secret, strlen(enc_secret), &secret, NULL);
 	if(ret != OATH_OK) {
 		printf("Error decoding secret: %s\n", oath_strerror(ret));
