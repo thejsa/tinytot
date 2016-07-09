@@ -117,7 +117,7 @@ int main() {
 		printf("Zero length!\n");
 	}
 	
-	ret = oath_base32_decode(enc_secret, strlen(enc_secret), &secret, NULL);
+	ret = oath_base32_decode(&encoded_secret, strlen(encoded_secret), &secret, NULL);
 	if(ret != OATH_OK) {
 		printf("Error decoding secret: %s\n", oath_strerror(ret));
 		return 1;
