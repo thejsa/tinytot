@@ -4,12 +4,13 @@
 *.3dsx
 *.elf
 *.cia
+*.smdh
 
 # Object files #
 ################
 
 *.o
-build/
+build
 
 # OS generated files #
 ######################
