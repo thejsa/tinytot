@@ -63,21 +63,16 @@ unsigned long currentTimeUTC() {
 	return (unsigned long)(systemTime - difference);
 	}
 	
-unsigned long generateTOTP(unsigned char *secret) {
-	if(strlen(secret) < 1) {
+unsigned long generateTOTP(unsigned char *secret, signed short *secretLength) {
+	if(*secretLength < 1) {
 		printf("Secret is zero-length, cannot generate TOTP\n");
 		return 0;
 	}
 	
-/*	int hex_secret_size = (2*strlen(secret) + 1);
-	char hex_secret[hex_secret_size];
-	oath_bin2hex(secret, strlen(secret), hex_secret);
-	printf("Secret: %s\n", hex_secret); */
-	
 	unsigned long timerightnow = currentTimeUTC();
 	unsigned char otp[7]; /* 6 digits + NULL */
 	
-	ret = oath_totp_generate(secret, strlen(secret), timerightnow, OATH_TOTP_DEFAULT_TIME_STEP_SIZE, OATH_TOTP_DEFAULT_START_TIME, 6, (char*)&otp);
+	ret = oath_totp_generate(secret, (size_t)*secretLength, timerightnow, OATH_TOTP_DEFAULT_TIME_STEP_SIZE, OATH_TOTP_DEFAULT_START_TIME, 6, (char*)&otp);
 	if(ret != OATH_OK) {
 		printf("Error generating TOTP: %s\n", oath_strerror(ret));
 		return 0;
@@ -117,7 +112,7 @@ int main() {
 			gfxFlushBuffers();
 			gfxSwapBuffers();
 		}
-		exit(1);
+		return 0;
 	}
 	
 	printf("Opened secret.txt\n");
@@ -136,8 +131,9 @@ int main() {
 	printf("Encoded secret: %s\n", encoded_secret);
 	
 	char *secret;
+	signed short secretLength;
 	
-	ret = oath_base32_decode(&encoded_secret, strlen(encoded_secret), &secret, NULL);
+	ret = oath_base32_decode(&encoded_secret, strlen(&encoded_secret), &secret, &secretLength);
 	if(ret != OATH_OK) {
 		printf("Error decoding secret: %s\n", oath_strerror(ret));
 		exit(1);
@@ -153,7 +149,7 @@ int main() {
 
 		unsigned long kDown = hidKeysDown();
 		if (kDown & KEY_A) {
-			unsigned long otp = generateTOTP(secret);
+			unsigned long otp = generateTOTP(secret, &secretLength);
 			if(otp == 0) {
 				printf("\nOTP generation failed.\n");
 				exit(1);
