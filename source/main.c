@@ -6,20 +6,18 @@
 #include <liboath/oath.h>
 
 int ret;
-u32 timeOffset = NULL;
-//char* enc_secret = "HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ"; /* secret (base32) */
+signed long clockOffset = -2147483647; /* will not reach this value ever on the 3DS */
 
-u32 sysClockOffset() {
-	/* Compares the system clock with current UTC time from timeapi.com */
-	/* ESSENTIAL for correct OTP generation, unless system clock is UTC */
-	/* Returns difference, in seconds. */
-	/* Add the result of this function to the 3DS time to get UTC. */
+signed long sysClockOffset() {
+	/* Compares the system clock with the current UTC time from my web server,
+	 * returning the difference in seconds.
+	 * Add the return value of this function to the system clock time to get the current time in UTC. */
 	
-	if(timeOffset != NULL) return timeOffset; /* a Very Low Number never reached in normal use. */
+	if(clockOffset != -2147483647) return clockOffset;
 	
 	Result ret = 0;
-	u32 statusCode = 0;
-	u32 contentSize = 0;
+	unsigned long statusCode = 0;
+	unsigned long contentSize = 0;
 	unsigned char *buffer;
 
 	httpcContext context;
@@ -50,22 +48,42 @@ u32 sysClockOffset() {
 		return ret;
 	}
 	
-	time_t utcTime = (time_t)strtol(buffer, NULL, 10);
+	time_t utcTime = (time_t)atol(buffer);
 	
 	time_t systemTime = time(NULL);
 	
-	u32 timeDifference = systemTime - utcTime; /* time(NULL) + timeDifference = UTC */
-
+	clockOffset = systemTime - utcTime; /* time(NULL) + timeDifference = UTC */
 	free(buffer);
-	return timeDifference;
+	return clockOffset;
 	}
 
-u32 currentTimeUTC() {
-	u32 timeNow = (u32)time(NULL);
-	u32 timeDifference = sysClockOffset();
+unsigned long currentTimeUTC() {
+	unsigned long systemTime = (unsigned long)time(NULL);
+	signed long difference = sysClockOffset();
+	return (unsigned long)(systemTime - difference);
+	}
 	
-	timeOffset = timeNow - timeDifference;
-	return timeOffset;
+unsigned long generateTOTP(unsigned char *secret) {
+	if(strlen(secret) < 1) {
+		printf("Secret is zero-length, cannot generate TOTP\n");
+		return 0;
+	}
+	
+/*	int hex_secret_size = (2*strlen(secret) + 1);
+	char hex_secret[hex_secret_size];
+	oath_bin2hex(secret, strlen(secret), hex_secret);
+	printf("Secret: %s\n", hex_secret); */
+	
+	unsigned long timerightnow = currentTimeUTC();
+	unsigned char otp[7]; /* 6 digits + NULL */
+	
+	ret = oath_totp_generate(secret, strlen(secret), timerightnow, OATH_TOTP_DEFAULT_TIME_STEP_SIZE, OATH_TOTP_DEFAULT_START_TIME, 6, (char*)&otp);
+	if(ret != OATH_OK) {
+		printf("Error generating TOTP: %s\n", oath_strerror(ret));
+		return 0;
+	}
+	
+	return atol(otp);
 	}
 
 int main() {
@@ -76,19 +94,18 @@ int main() {
 	printf("Build date: %s %s\n\n", __DATE__, __TIME__);
 	//printf("Current time: %d\n\n", (int)time(NULL));
 	
-	printf("Calculating time ... make sure you are connected to the Internet. ");
+	printf("Calculating time difference from UTC... make sure you are connected to the Internet. ");
 	
-	u32 rightnow = currentTimeUTC(); printf("OK\n");
+	sysClockOffset();
+	printf("OK\n");
 	
-	printf("Current time (Unix timestamp): %d\n\n", rightnow);
+	printf("Current time (Unix timestamp): %lu\n\n", currentTimeUTC());
 	
 	ret = oath_init();
 	if(ret != OATH_OK) {
 		printf("Error initializing liboath: %s\n", oath_strerror(ret));
-		return 1;
+		exit(1);
 	}
-	
-	char *secret;
 	
 	FILE *secretFile;
 	if((secretFile = fopen("secret.txt", "r")) == NULL) {
@@ -97,7 +114,7 @@ int main() {
 			gspWaitForVBlank();
 			hidScanInput();
 			
-			u32 kDown = hidKeysDown();
+			unsigned long kDown = hidKeysDown();
 			if(kDown & KEY_A) break;
 			gfxFlushBuffers();
 			gfxSwapBuffers();
@@ -111,33 +128,23 @@ int main() {
 	
 	char encoded_secret[1024];
 	fscanf(secretFile, "%[^\n]", encoded_secret);
-	printf("Secret read from secret.txt: %s\n", encoded_secret);
 	fclose(secretFile);
+	
 	if(strlen(encoded_secret) < 1){
-		printf("Zero length!\n");
+		printf("Secret is zero length.\n");
+		return 1;
 	}
+	
+	printf("Encoded secret: %s\n", encoded_secret);
+	
+	char *secret;
 	
 	ret = oath_base32_decode(&encoded_secret, strlen(encoded_secret), &secret, NULL);
 	if(ret != OATH_OK) {
 		printf("Error decoding secret: %s\n", oath_strerror(ret));
-		return 1;
+		exit(1);
 	}
 	
-	/*int hex_secret_size = (2*strlen(secret) + 1);
-	char hex_secret[hex_secret_size];
-	
-	oath_bin2hex(secret, strlen(secret), hex_secret);
-	
-	printf("Secret: %s\n", hex_secret); */
-	
-	char otp[7]; /* 6 digits + NULL */
-	
-	ret = oath_totp_generate(secret, strlen(secret), rightnow, OATH_TOTP_DEFAULT_TIME_STEP_SIZE, OATH_TOTP_DEFAULT_START_TIME, 6, (char*)&otp);
-	if(ret != OATH_OK) {
-		printf("Error generating TOTP: %s\n", oath_strerror(ret));
-		return 1;
-	}
-	printf("\n\nOTP is: %s\n", otp);
 	
 	// Main loop
 	while (aptMainLoop())
@@ -145,7 +152,16 @@ int main() {
 		gspWaitForVBlank();
 		hidScanInput();
 
-		u32 kDown = hidKeysDown();
+		unsigned long kDown = hidKeysDown();
+		if (kDown & KEY_A) {
+			unsigned long otp = generateTOTP(secret);
+			if(otp == 0) {
+				printf("\nOTP generation failed.\n");
+				exit(1);
+			}
+			printf("\nOTP successfully generated: %06lu\n\n");
+		}
+		
 		if (kDown & KEY_START)
 			break; // break in order to return to hbmenu
 
