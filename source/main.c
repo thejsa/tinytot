@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <time.h>
 #include <liboath/oath.h>
+#include <quirc.h>
+#include "qr.h"
 
 int ret;
 signed long clockOffset = -2147483647; /* will not reach this value ever on the 3DS */
@@ -155,6 +157,16 @@ int main() {
 				exit(1);
 			}
 			printf("OTP: %06lu\n\n");
+		}
+		
+		if(kDown & KEY_Y) {
+			printf("Starting QR mode...\n");
+			char *outBuffer;
+			initialiseQRScanner();
+			printf("Initialised QR scanner!\n");
+			int qrret = scanQRCode(outBuffer);
+			printf("QR scan complete\n");
+			printf("Scan result: %s\n", &outBuffer);
 		}
 		
 		if (kDown & KEY_START)

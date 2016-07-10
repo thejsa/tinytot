@@ -48,14 +48,14 @@ CFLAGS	:=	-g -Wall -O2 -mword-relocations \
 			-fomit-frame-pointer -ffunction-sections \
 			$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DAPP_VERSION="\"${GIT_VERSION}\"" -DAPP_TITLE="\"${APP_TITLE}\"" -DAPP_AUTHOR="\"${APP_AUTHOR}\""
+CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DAPP_VERSION="\"${GIT_VERSION}\"" -DAPP_TITLE="\"${APP_TITLE}\"" -DAPP_AUTHOR="\"${APP_AUTHOR}\"" -std=c99
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lctru -lm -loath
+LIBS	:= -lquirc -lctru -lm -loath
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

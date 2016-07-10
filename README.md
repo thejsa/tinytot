@@ -9,6 +9,8 @@ This is used for generating One-Time Passwords for logging into websites, simila
 
 ## License
 TinyTot is licensed under the Apache License v2.0. (see LICENSE.txt)
+QR code functionality borrowed from [ksanislo/QRWebLoader](https://github.com/ksanislo/QRWebLoader).
+Requires quirc.
 Requires liboath from [oath-toolkit](http://www.nongnu.org/oath-toolkit/) by Simon Joseffson, et al., licensed under the LGPL.
 
 ## Compiling liboath
