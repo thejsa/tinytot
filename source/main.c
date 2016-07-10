@@ -88,7 +88,7 @@ unsigned long generateTOTP(unsigned char *secret) {
 
 int main() {
 	gfxInitDefault();
-	consoleInit(GFX_TOP, NULL);
+	consoleInit(GFX_BOTTOM, NULL);
 	
 	printf("%s %s by %s\n", APP_TITLE, APP_VERSION, APP_AUTHOR);
 	printf("Build date: %s %s\n\n", __DATE__, __TIME__);
@@ -98,8 +98,6 @@ int main() {
 	
 	sysClockOffset();
 	printf("OK\n");
-	
-	printf("Current time (Unix timestamp): %lu\n\n", currentTimeUTC());
 	
 	ret = oath_init();
 	if(ret != OATH_OK) {
@@ -145,6 +143,7 @@ int main() {
 		exit(1);
 	}
 	
+	printf("Press A to generate a one-time password.\n\n");
 	
 	// Main loop
 	while (aptMainLoop())
@@ -159,7 +158,7 @@ int main() {
 				printf("\nOTP generation failed.\n");
 				exit(1);
 			}
-			printf("\nOTP successfully generated: %06lu\n\n");
+			printf("OTP: %06lu\n\n");
 		}
 		
 		if (kDown & KEY_START)
