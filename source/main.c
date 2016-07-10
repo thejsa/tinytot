@@ -7,7 +7,7 @@
 
 int ret;
 u32 timeOffset = NULL;
-char* enc_secret = "HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ"; /* secret (base32) */
+//char* enc_secret = "HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ"; /* secret (base32) */
 
 u32 sysClockOffset() {
 	/* Compares the system clock with current UTC time from timeapi.com */
@@ -113,7 +113,7 @@ int main() {
 	fscanf(secretFile, "%[^\n]", encoded_secret);
 	printf("Secret read from secret.txt: %s\n", encoded_secret);
 	fclose(secretFile);
-	if(strlen(enc_secret) < 1){
+	if(strlen(encoded_secret) < 1){
 		printf("Zero length!\n");
 	}
 	
