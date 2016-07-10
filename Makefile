@@ -2,6 +2,8 @@
 .SUFFIXES:
 #---------------------------------------------------------------------------------
 
+GIT_VERSION	:=	$(shell git describe --long --always)
+
 ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
@@ -35,7 +37,6 @@ INCLUDES	:=	include
 APP_TITLE	:=	tinytot
 APP_DESCRIPTION	:=	Two-factor authentication OTP generator.
 APP_AUTHOR	:=	Joshua Kelly
-GIT_VERSION	:=	$(shell git describe --dirty --always --tags)
 #ROMFS		:=	romfs
 
 #---------------------------------------------------------------------------------
