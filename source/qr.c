@@ -116,7 +116,7 @@ int scanQRCode(uint8_t *outBuffer) {
 					return -1;
 				}
 				printf("Pointer allocated: %p\n", outBuffer);
-				*outBuffer = data.payload;
+				outBuffer = data.payload;
 				// outBuffer = strdup(data.payload);
 				delay(3);
 				
