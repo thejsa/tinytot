@@ -161,12 +161,14 @@ int main() {
 		
 		if(kDown & KEY_Y) {
 			printf("Starting QR mode...\n");
-			char *outBuffer;
+			uint8_t *qrPayloadBuffer = NULL;
 			initialiseQRScanner();
 			printf("Initialised QR scanner!\n");
-			int qrret = scanQRCode(outBuffer);
+			int qrret = scanQRCode(qrPayloadBuffer);
 			printf("QR scan complete\n");
-			printf("Scan result: %s\n", &outBuffer);
+			printf("Pointer value: %p\n", qrPayloadBuffer);
+			printf("Scan result: %s\n", (unsigned char)*qrPayloadBuffer);
+			printf(qrPayloadBuffer);
 		}
 		
 		if (kDown & KEY_START)

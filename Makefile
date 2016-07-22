@@ -48,7 +48,7 @@ CFLAGS	:=	-g -Wall -O2 -mword-relocations \
 			-fomit-frame-pointer -ffunction-sections \
 			$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DAPP_VERSION="\"${GIT_VERSION}\"" -DAPP_TITLE="\"${APP_TITLE}\"" -DAPP_AUTHOR="\"${APP_AUTHOR}\"" -std=c99
+CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DAPP_VERSION="\"${GIT_VERSION}\"" -DAPP_TITLE="\"${APP_TITLE}\"" -DAPP_AUTHOR="\"${APP_AUTHOR}\"" -std=c11
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 

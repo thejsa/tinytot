@@ -66,7 +66,7 @@ int initialiseQRScanner() {
 	return 0;
 }
 
-int scanQRCode(unsigned char *outBuffer) {
+int scanQRCode(uint8_t *outBuffer) {
 	while (aptMainLoop())
 	{
 		hidScanInput();
@@ -109,11 +109,15 @@ int scanQRCode(unsigned char *outBuffer) {
 			err = quirc_decode(&code, &data);
 			if(!err) {
 				CAMU_PlayShutterSound(SHUTTER_SOUND_TYPE_NORMAL);
-				printf("Data found: %s\n", data.payload);
-				outBuffer = (unsigned char*)malloc(strlen(data.payload));
-				memcpy(*outBuffer, data.payload, strlen(data.payload) + 1);
-				printf("Data not copied to output buffer.\n");
-				
+				printf("Data found. Length: %d; payload: %s\n", data.payload_len, data.payload);
+				outBuffer = (uint8_t*)malloc(data.payload_len);
+				if(NULL == outBuffer) {
+					printf("Could not allocate memory for QR payload.\n");
+					return -1;
+				}
+				printf("Pointer allocated: %p\n", outBuffer);
+				*outBuffer = data.payload;
+				// outBuffer = strdup(data.payload);
 				delay(3);
 				
 				clearScreen();
