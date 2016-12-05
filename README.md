@@ -1,5 +1,5 @@
 # tinytot
-## Homebrew 2FA One-Time Password generator for the Nintendo 3DS.
+## Two-factor authentication app for the 3DS
 
 Currently only supports the TOTP algorithm.
 The secret to use should be stored in secret.txt in the same directory as the 3DSX, encoded in base 32.
