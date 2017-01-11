@@ -5,81 +5,123 @@
 #include <time.h>
 #include <liboath/oath.h>
 
-int ret;
-signed long clockOffset = -2147483647; /* will not reach this value ever on the 3DS */
+char const * TEST_ENCODED_SECRET = "HXDMVJECJJWSRB3HWIZR4IFUGFTMXBOZ"; /* secret (base32) */
 
-signed long sysClockOffset() {
-	/* Compares the system clock with the current UTC time from my web server,
-	 * returning the difference in seconds.
-	 * Add the return value of this function to the system clock time to get the current time in UTC. */
+// TODO: How to account for daylight savings time?
+// TODO: LibCtrU includes an internal function that appears to use a timezone:
+//       int __libctru_gtod(struct _reent *ptr, struct timeval *tp, struct timezone *tz);
+//       Is this exported anywhere?
+//       If not, perhaps modify LibCtrU to include this functionality?
+
+// See libctru\include\3ds\result.h for definitions
+Result const R_TINYTOT_SUCCESS  = MAKERESULT(RL_SUCCESS,RS_SUCCESS,RM_APPLICATION,RD_SUCCESS);
+Result const R_TINYTOT_OVERFLOW = MAKERESULT(RL_FATAL,RS_INVALIDARG,RM_APPLICATION,RD_TOO_LARGE);
+Result const R_TINYTOT_OUTOFMEMORY = MAKERESULT(RL_FATAL,RS_OUTOFRESOURCE,RM_APPLICATION,RD_OUT_OF_MEMORY);
+unsigned long const INVALID_DECODED_SECRET = 0;
+unsigned long const REQUESTED_OTP_DIGITS = 6;
+
+signed long INVALID_CLOCK_OFFSET  = 0x1FFFF; // illegal value... see InitializeClockOffset()
+signed long g_SystemClockUtcOffset = INVALID_CLOCK_OFFSET; // NULL for non-pointer isn't correct
+bool IsValidTimeOffset(u32 timeOffset)
+{
+	// timeOffset valid values are +/- 12 hours (+/- 43200 seconds)
+	u32 x = 43200;
+	u32 y = 0 - x;
+	return ((timeOffset <= x) || (timeOffset >= y))
+}
+
+Result InitializeClockOffset() {
+	/* Compares the system clock with current UTC time from timeapi.com */
+	/* ESSENTIAL for correct OTP generation, unless system clock is UTC */
+	/* Returns difference, in seconds. */
+	/* Add the result of this function to the 3DS time to get UTC. */
 	
-	if(clockOffset != -2147483647) return clockOffset;
+	if (IsValidTimeOffset(g_SystemClockUtcOffset)) return true;
 	
 	Result ret = 0;
 	unsigned long statusCode = 0;
 	unsigned long contentSize = 0;
-	unsigned char *buffer;
+	unsigned char *buffer = NULL;
 
-	httpcContext context;
+	httpcContext context; // NOTE: Uninitialized memory
 	httpcInit(0);
 	
-	char *url = "http://flipnote.nonm.co.uk/time.php";
+	char * url = "http://flipnote.nonm.co.uk/time.php";
+
 	/* URL returning current time in UTC */
-	ret = httpcOpenContext(&context, HTTPC_METHOD_GET, url, 1);
-	if(ret != 0) return ret;
 	
-	ret = httpcBeginRequest(&context);
-	if(ret != 0) return ret;
-	
-	ret = httpcGetResponseStatusCode(&context, &statusCode, 0);
-	if(ret != 0) return ret;
-	if(statusCode != 200) printf("WARNING: Status code returned was %d\n", statusCode);
-	
-	ret = httpcGetDownloadSizeState(&context, NULL, &contentSize);
-	if(ret != 0) return ret;
-	
-	buffer = (unsigned char*)malloc(contentSize+1);
-	if(buffer == NULL) return -1;
-	memset(buffer, 0, contentSize);
-	
-	ret = httpcDownloadData(&context, buffer, contentSize, NULL);
-	if(ret != 0) {
-		free(buffer);
-		return ret;
-	}
-	
-	time_t utcTime = (time_t)atol(buffer);
-	
-	time_t systemTime = time(NULL);
-	
-	clockOffset = systemTime - utcTime; /* time(NULL) + timeDifference = UTC */
-	free(buffer);
-	return clockOffset;
+	if (R_SUCCESS(ret)) {
+		ret = httpcOpenContext(&context, HTTPC_METHOD_GET, url, 1);
 	}
 
-unsigned long currentTimeUTC() {
-	unsigned long systemTime = (unsigned long)time(NULL);
-	signed long difference = sysClockOffset();
-	return (unsigned long)(systemTime - difference);
+	if (R_SUCCESS(ret)) {
+		ret = httpcBeginRequest(&context);
 	}
 	
-unsigned long generateTOTP(unsigned char *secret, signed short *secretLength) {
+	if (R_SUCCESS(ret)) {
+		ret = httpcGetResponseStatusCode(&context, &statusCode, 0);
+		if (R_SUCCESS(ret) && statusCode != 200) {
+			printf("WARNING: HTTP status code returned was %d\n", statusCode);
+		}
+	}
+	if (R_SUCCESS(ret)) {
+		ret = httpcGetDownloadSizeState(&context, NULL, &contentSize);
+	}
+	if (R_SUCCESS(ret)) {
+		if(contentSize+1 < contentSize) {
+			ret =  R_TINYTOT_OVERFLOW; // overflow -- do not allow
+		}
+	}
+	if (R_SUCCESS(ret)) {
+		buffer = (unsigned char*)malloc(contentSize+1);
+		if(buffer == NULL) {
+			ret = R_TINYTOT_OUTOFMEMORY;
+		}
+	}
+	if (R_SUCCESS(ret)) {
+		memset(buffer, 0, contentSize+1); // zero that last byte also
+		ret = httpcDownloadData(&context, buffer, contentSize, NULL);
+	}
+	if (R_SUCCESS(ret)) {
+		time_t utcTime = (time_t)atol(buffer);
+		time_t systemTime = time(NULL);
+		signed long timeDifference = systemTime - utcTime; /* time(NULL) + timeDifference = UTC */
+		g_SystemClockUtcOffset = timeDifference;
+	}
+	if (NULL != buffer) {
+		free(buffer);
+	}
+	return ret;
+}
+
+// TODO: Change to accept a pointer, return Result type, so can call Initialize() directly here?
+unsigned long currentTimeUTC() {
+	unsigned long systemTime = (unsigned long)time(NULL);
+	return (unsigned long)(systemTime - g_SystemClockUtcOffset);
+}
+	
+unsigned long generateTOTP(unsigned char const * secret, size_t const * secretLength) {
 	if(*secretLength < 1) {
 		printf("Secret is zero-length, cannot generate TOTP\n");
-		return 0;
+		return INVALID_DECODED_SECRET;
+	}
+	
+	if(!R_SUCCESS(InitializeClockOffset)) {
+		printf("Failed to initializ clock offset, cannot generate TOTP\n");
+		return INVALID_DECODED_SECRET;
 	}
 	
 	unsigned long timerightnow = currentTimeUTC();
-	unsigned char otp[7]; /* 6 digits + NULL */
+	unsigned char otp[REQUESTED_OTP_DIGITS+1]; /* must allocate for trailing NULL */
 	
-	ret = oath_totp_generate(secret, (size_t)*secretLength, timerightnow, OATH_TOTP_DEFAULT_TIME_STEP_SIZE, OATH_TOTP_DEFAULT_START_TIME, 6, (char*)&otp);
+	int ret = oath_totp_generate(secret, (size_t)*secretLength, timerightnow, OATH_TOTP_DEFAULT_TIME_STEP_SIZE, OATH_TOTP_DEFAULT_START_TIME, REQUESTED_OTP_DIGITS, (char*)&otp);
 	if(ret != OATH_OK) {
 		printf("Error generating TOTP: %s\n", oath_strerror(ret));
-		return 0;
+		return INVALID_DECODED_SECRET;
 	}
 	
 	return atol(otp);
-	}
+}
 
 int main() {
 	gfxInitDefault();
@@ -88,16 +130,20 @@ int main() {
 	printf("%s %s by %s\n", APP_TITLE, APP_VERSION, APP_AUTHOR);
 	printf("Build date: %s %s\n\n", __DATE__, __TIME__);
 	//printf("Current time: %d\n\n", (int)time(NULL));
-	
+
 	printf("Calculating time difference from UTC... make sure you are connected to the Internet. ");
 	
-	sysClockOffset();
+	Result InitClockOffsetResult = InitializeClockOffset();
+	if (!R_SUCCESS(InitClockOffsetResult)) {
+		printf("Error initializing time offset: %08x", InitClockOffsetResult);
+		return 1;
+	}
 	printf("OK\n");
 	
 	ret = oath_init();
 	if(ret != OATH_OK) {
 		printf("Error initializing liboath: %s\n", oath_strerror(ret));
-		exit(1);
+		return 1;
 	}
 	
 	FILE *secretFile;
@@ -112,12 +158,10 @@ int main() {
 			gfxFlushBuffers();
 			gfxSwapBuffers();
 		}
-		return 0;
+		return 1;
 	}
 	
 	printf("Opened secret.txt\n");
-	
-	//free(enc_secret);
 	
 	char encoded_secret[1024];
 	fscanf(secretFile, "%[^\n]", encoded_secret);
@@ -139,7 +183,7 @@ int main() {
 		exit(1);
 	}
 	
-	printf("Press A to generate a one-time password.\n\n");
+	printf("Press A to generate a one-time password, start to exit.\n\n");
 	
 	// Main loop
 	while (aptMainLoop())
@@ -157,8 +201,9 @@ int main() {
 			printf("OTP: %06lu\n\n");
 		}
 		
-		if (kDown & KEY_START)
+		if (kDown & KEY_START) {
 			break; // break in order to return to hbmenu
+		}
 
 		// Flush and swap framebuffers
 		gfxFlushBuffers();
