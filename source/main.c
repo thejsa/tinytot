@@ -46,7 +46,12 @@ Result InitializeClockOffset() {
 	httpcContext context; // NOTE: Uninitialized memory
 	httpcInit(0);
 	
-	char * url = "http://flipnote.nonm.co.uk/time.php";
+	char * url = "http://jsa.labs.projectkaeru.xyz/atoolyoucanputonthewall.php";
+	/* put this line into a blank PHP file:
+
+	<?php date_default_timezone_set("UTC"); echo time(); exit; ?>
+
+	*/
 
 	/* URL returning current time in UTC */
 	
@@ -123,6 +128,33 @@ unsigned long generateTOTP(unsigned char const * secret, size_t const * secretLe
 	return atol(otp);
 }
 
+static SwkbdCallbackResult swkbdCallbackThing(void* user, const char** ppMessage, const char* text, size_t textlen)
+{
+	char *secret;
+	signed short secretLength;
+
+	ret = oath_base32_decode(text, strlen(text), &secret, &secretLength);
+
+	if(ret != OATH_OK) {
+		printf("Error decoding secret: %s\n", oath_strerror(ret));
+		sprintf(*ppMessage, "Error decoding: %s", oath_strerror(ret));
+		return SWKBD_CALLBACK_CONTINUE;
+	}else{
+		unsigned long otp = generateTOTP(secret, &secretLength);
+		if(otp == 0) {
+			*ppMessage = "OTP generation failed.";
+			printf("\nOTP generation failed.\n");
+			return SWKBD_CALLBACK_CONTINUE;
+		}else{
+			sprintf(*ppMessage, "OTP: %06lu", otp)
+			printf("*** OTP: %06lu ***\n\n", otp);
+			return SWKBD_CALLBACK_CONTINUE;
+		}
+	}
+
+	return SWKBD_CALLBACK_OK;
+}
+
 int main() {
 	gfxInitDefault();
 	consoleInit(GFX_BOTTOM, NULL);
@@ -145,11 +177,13 @@ int main() {
 		printf("Error initializing liboath: %s\n", oath_strerror(ret));
 		return 1;
 	}
-	
+
+	char encoded_secret[1024];
 	FILE *secretFile;
+	signed short secretTxtDecLength;
 	if((secretFile = fopen("secret.txt", "r")) == NULL) {
-		printf("Secret.txt not found in application directory - this file is required to generate an OTP. Press A to exit.");
-		while(aptMainLoop()) {
+		printf("warning: Secret.txt not found in application directory (SD root if installed as CIA)");
+		/*while(aptMainLoop()) {
 			gspWaitForVBlank();
 			hidScanInput();
 			
@@ -158,32 +192,32 @@ int main() {
 			gfxFlushBuffers();
 			gfxSwapBuffers();
 		}
-		return 1;
+		return 1;*/
+	}else{
+		printf("Opened secret.txt\n");
+		fscanf(secretFile, "%[^\n]", encoded_secret);
+		fclose(secretFile);
+		if(strlen(encoded_secret) < 1){
+			printf("warning: secret.txt exists but is empty.\n");
+		}else{
+			printf("Read secret.txt: %s\n", encoded_secret);
+	
+			ret = oath_base32_decode(&encoded_secret, strlen(&encoded_secret), NULL, &secretTxtDecLength);
+			if(ret != OATH_OK) {
+				printf("Error decoding secret.txt: %s\n", oath_strerror(ret));
+				memset(&encoded_secret[0], 0, sizeof(encoded_secret)); // wipe the copy we have in memory, to avoid prefilling the swkbd with undecodable stuff
+			}else{
+				printf("Read secret.txt successfully.");
+			}
+		}
 	}
+
+	char inputSecret[1024];
+
+	bool quit = false;
+	bool ask = false;
 	
-	printf("Opened secret.txt\n");
-	
-	char encoded_secret[1024];
-	fscanf(secretFile, "%[^\n]", encoded_secret);
-	fclose(secretFile);
-	
-	if(strlen(encoded_secret) < 1){
-		printf("Secret is zero length.\n");
-		return 1;
-	}
-	
-	printf("Encoded secret: %s\n", encoded_secret);
-	
-	char *secret;
-	signed short secretLength;
-	
-	ret = oath_base32_decode(&encoded_secret, strlen(&encoded_secret), &secret, &secretLength);
-	if(ret != OATH_OK) {
-		printf("Error decoding secret: %s\n", oath_strerror(ret));
-		exit(1);
-	}
-	
-	printf("Press A to generate a one-time password, start to exit.\n\n");
+	printf("Press A to begin, or start to exit.\n\n");
 	
 	// Main loop
 	while (aptMainLoop())
@@ -192,13 +226,38 @@ int main() {
 		hidScanInput();
 
 		unsigned long kDown = hidKeysDown();
-		if (kDown & KEY_A) {
-			unsigned long otp = generateTOTP(secret, &secretLength);
-			if(otp == 0) {
-				printf("\nOTP generation failed.\n");
-				exit(1);
+		if (kDown & KEY_A) ask = true;
+
+		if(ask && !quit) {
+			static SwkbdState swkbd;
+			static SwkbdStatusData swkbdStatus;
+			SwkbdButton button = SWKBD_BUTTON_NONE;
+
+			swkbdInit(&swkbd, SWKBD_TYPE_WESTERN, 2, 512);
+			swkbdSetHintText(&swkbd, "Enter your TOTP secret.");
+			swkbdSetButton(&swkbd, SWKBD_BUTTON_LEFT, "Quit", false);
+			swkbdSetButton(&swkbd, SWKBD_BUTTON_MIDDLE, "Load txt", true);
+			swkbdSetButton(&swkbd, SWKBD_BUTTON_RIGHT, "Go", true);
+			swkbdSetInitialText(&swkbd, inputSecret);
+			swkbdSetFeatures(&swkbd, SWKBD_DEFAULT_QWERTY);
+			swkbdSetFilterCallback(&swkbd, swkbdCallbackThing);
+
+			swkbdInputText(&swkbd, inputSecret, sizeof(inputSecret));
+
+			switch(button) {
+				case SWKBD_BUTTON_LEFT: // quit
+					quit = true;
+					break;
+				case SWKBD_BUTTON_MIDDLE: // read secret.txt
+					strcpy(inputSecret, encoded_secret);
+					break;
+				case SWKBD_BUTTON_RIGHT: // go (this is handled in filter callback)
+					break;
+				default:
+					break;
 			}
-			printf("OTP: %06lu\n\n");
+
+			if(quit) break; // quit to HBL
 		}
 		
 		if (kDown & KEY_START) {
