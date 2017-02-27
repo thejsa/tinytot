@@ -55,39 +55,39 @@ Result InitializeClockOffset() {
 
 	/* URL returning current time in UTC */
 	
-	if (R_SUCCESS(ret)) {
+	if (ret) {
 		ret = httpcOpenContext(&context, HTTPC_METHOD_GET, url, 1);
 	}
 
-	if (R_SUCCESS(ret)) {
+	if (ret) {
 		ret = httpcBeginRequest(&context);
 	}
 	
-	if (R_SUCCESS(ret)) {
+	if (ret) {
 		ret = httpcGetResponseStatusCode(&context, &statusCode);
-		if (R_SUCCESS(ret) && statusCode != 200) {
+		if (ret && statusCode != 200) {
 			printf("WARNING: HTTP status code returned was %d\n", statusCode);
 		}
 	}
-	if (R_SUCCESS(ret)) {
+	if (ret) {
 		ret = httpcGetDownloadSizeState(&context, NULL, &contentSize);
 	}
-	if (R_SUCCESS(ret)) {
+	if (ret) {
 		if(contentSize+1 < contentSize) {
 			ret =  R_TINYTOT_OVERFLOW; // overflow -- do not allow
 		}
 	}
-	if (R_SUCCESS(ret)) {
+	if (ret) {
 		buffer = (unsigned char*)malloc(contentSize+1);
 		if(buffer == NULL) {
 			ret = R_TINYTOT_OUTOFMEMORY;
 		}
 	}
-	if (R_SUCCESS(ret)) {
+	if (ret) {
 		memset(buffer, 0, contentSize+1); // zero that last byte also
 		ret = httpcDownloadData(&context, buffer, contentSize, NULL);
 	}
-	if (R_SUCCESS(ret)) {
+	if (ret) {
 		time_t utcTime = (time_t)atol(buffer);
 		time_t systemTime = time(NULL);
 		signed long timeDifference = systemTime - utcTime; /* time(NULL) + timeDifference = UTC */
@@ -111,7 +111,7 @@ unsigned long generateTOTP(unsigned char const * secret, size_t const * secretLe
 		return INVALID_DECODED_SECRET;
 	}
 	
-	if(!R_SUCCESS(InitializeClockOffset)) {
+	if(!InitializeClockOffset) {
 		printf("Failed to initializ clock offset, cannot generate TOTP\n");
 		return INVALID_DECODED_SECRET;
 	}
@@ -166,7 +166,7 @@ int main() {
 	printf("Calculating time difference from UTC... make sure you are connected to the Internet. ");
 	
 	Result InitClockOffsetResult = InitializeClockOffset();
-	if (!R_SUCCESS(InitClockOffsetResult)) {
+	if (!InitClockOffsetResult) {
 		printf("Error initializing time offset: %08x", InitClockOffsetResult);
 		return 1;
 	}
