@@ -21,7 +21,7 @@ unsigned long const INVALID_DECODED_SECRET = 0;
 unsigned long const REQUESTED_OTP_DIGITS = 6;
 
 signed long const INVALID_CLOCK_OFFSET  = 0x1FFFF; // illegal value... see InitializeClockOffset()
-signed long g_SystemClockUtcOffset = INVALID_CLOCK_OFFSET; // NULL for non-pointer isn't correct
+signed long g_SystemClockUtcOffset = 0x1FFFF; // NULL for non-pointer isn't correct
 bool IsValidTimeOffset(u32 timeOffset)
 {
 	// timeOffset valid values are +/- 12 hours (+/- 43200 seconds)
@@ -133,7 +133,7 @@ static SwkbdCallbackResult swkbdCallbackThing(void* user, const char** ppMessage
 	char *secret;
 	signed short secretLength;
 
-	ret = oath_base32_decode(text, strlen(text), &secret, &secretLength);
+	int ret = oath_base32_decode(text, strlen(text), &secret, &secretLength);
 
 	if(ret != OATH_OK) {
 		printf("Error decoding secret: %s\n", oath_strerror(ret));
