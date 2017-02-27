@@ -240,7 +240,7 @@ int main() {
 			swkbdSetButton(&swkbd, SWKBD_BUTTON_RIGHT, "Go", true);
 			swkbdSetInitialText(&swkbd, inputSecret);
 			swkbdSetFeatures(&swkbd, SWKBD_DEFAULT_QWERTY);
-			swkbdSetFilterCallback(&swkbd, swkbdCallbackThing);
+			swkbdSetFilterCallback(&swkbd, swkbdCallbackThing, NULL);
 
 			swkbdInputText(&swkbd, inputSecret, sizeof(inputSecret));
 
