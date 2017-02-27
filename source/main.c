@@ -20,14 +20,14 @@ Result const R_TINYTOT_OUTOFMEMORY = MAKERESULT(RL_FATAL,RS_OUTOFRESOURCE,RM_APP
 unsigned long const INVALID_DECODED_SECRET = 0;
 unsigned long const REQUESTED_OTP_DIGITS = 6;
 
-signed long INVALID_CLOCK_OFFSET  = 0x1FFFF; // illegal value... see InitializeClockOffset()
+signed long const INVALID_CLOCK_OFFSET  = 0x1FFFF; // illegal value... see InitializeClockOffset()
 signed long g_SystemClockUtcOffset = INVALID_CLOCK_OFFSET; // NULL for non-pointer isn't correct
 bool IsValidTimeOffset(u32 timeOffset)
 {
 	// timeOffset valid values are +/- 12 hours (+/- 43200 seconds)
 	u32 x = 43200;
 	u32 y = 0 - x;
-	return ((timeOffset <= x) || (timeOffset >= y))
+	return ((timeOffset <= x) || (timeOffset >= y));
 }
 
 Result InitializeClockOffset() {
@@ -64,7 +64,7 @@ Result InitializeClockOffset() {
 	}
 	
 	if (R_SUCCESS(ret)) {
-		ret = httpcGetResponseStatusCode(&context, &statusCode, 0);
+		ret = httpcGetResponseStatusCode(&context, &statusCode);
 		if (R_SUCCESS(ret) && statusCode != 200) {
 			printf("WARNING: HTTP status code returned was %d\n", statusCode);
 		}
