@@ -146,7 +146,7 @@ static SwkbdCallbackResult swkbdCallbackThing(void* user, const char** ppMessage
 			printf("\nOTP generation failed.\n");
 			return SWKBD_CALLBACK_CONTINUE;
 		}else{
-			sprintf(*ppMessage, "OTP: %06lu", otp)
+			sprintf(*ppMessage, "OTP: %06lu", otp);
 			printf("*** OTP: %06lu ***\n\n", otp);
 			return SWKBD_CALLBACK_CONTINUE;
 		}
@@ -172,7 +172,7 @@ int main() {
 	}
 	printf("OK\n");
 	
-	ret = oath_init();
+	int ret = oath_init();
 	if(ret != OATH_OK) {
 		printf("Error initializing liboath: %s\n", oath_strerror(ret));
 		return 1;
