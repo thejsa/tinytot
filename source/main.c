@@ -46,7 +46,7 @@ Result InitializeClockOffset() {
 	httpcContext context; // NOTE: Uninitialized memory
 	httpcInit(0);
 	
-	char * url = "http://jsa.labs.projectkaeru.xyz/atoolyoucanputonthewall.php";
+	char * url = "http://old-labs.muffinti.me/atoolyoucanputonthewall.php";
 	/* put this line into a blank PHP file:
 
 	<?php date_default_timezone_set("UTC"); echo time(); exit; ?>
