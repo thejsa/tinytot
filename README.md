@@ -12,7 +12,7 @@ TinyTot is licensed under the Apache License v2.0. (see LICENSE.txt)
 Requires liboath from [oath-toolkit](http://www.nongnu.org/oath-toolkit/) by Simon Joseffson, et al., licensed under the LGPL.
 
 ## Compiling liboath
-Instructions for downloading & building liboath as a portlib:
+Instructions for downloading & building liboath as a portlib (NOTE: these are quite outdated, and a PKGBUILD for dkp-pacman would be more appropriate, see issue #9)
 	
 	wget http://download.savannah.gnu.org/releases/oath-toolkit/oath-toolkit-2.6.1.tar.gz
 	tar zxvf oath-toolkit-*.tar.gz
